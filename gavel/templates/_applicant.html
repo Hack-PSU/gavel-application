@@ -1,0 +1,66 @@
+<div class="info applicant-profile">
+  <h2>{{ applicant.full_name }}</h2>
+
+  <div class="applicant-section">
+    <h3>Contact Information</h3>
+    <p><strong>Email:</strong> {{ applicant.email }}</p>
+    {% if applicant.phone %}<p><strong>Phone:</strong> {{ applicant.phone }}</p>{% endif %}
+    {% if applicant.linkedin_url %}<p><strong>LinkedIn:</strong> <a href="{{ applicant.linkedin_url }}" target="_blank" rel="noopener">View Profile</a></p>{% endif %}
+  </div>
+
+  <div class="applicant-section">
+    <h3>Education</h3>
+    <p><strong>University:</strong> {{ applicant.university or 'Not specified' }}</p>
+    <p><strong>Major:</strong> {{ applicant.major or 'Not specified' }}</p>
+    <p><strong>Academic Year:</strong> {{ applicant.academic_year or 'Not specified' }}</p>
+    {% if applicant.educational_institution_type %}<p><strong>Institution Type:</strong> {{ applicant.educational_institution_type }}</p>{% endif %}
+  </div>
+
+  <div class="applicant-section">
+    <h3>Experience</h3>
+    <p><strong>First Hackathon:</strong> {{ 'Yes' if applicant.first_hackathon else 'No' if applicant.first_hackathon is not none else 'Not specified' }}</p>
+    {% if applicant.coding_experience %}<p><strong>Coding Experience:</strong> {{ applicant.coding_experience }}</p>{% endif %}
+  </div>
+
+  <div class="applicant-section">
+    <h3>Application Responses</h3>
+    {% if applicant.project %}
+    <p><strong>Project Idea:</strong></p>
+    <p class="preserve-formatting">{{ applicant.project }}</p>
+    {% endif %}
+    {% if applicant.expectations %}
+    <p><strong>Expectations:</strong></p>
+    <p class="preserve-formatting">{{ applicant.expectations }}</p>
+    {% endif %}
+    {% if applicant.excitement %}
+    <p><strong>What Excites Them:</strong></p>
+    <p class="preserve-formatting">{{ applicant.excitement }}</p>
+    {% endif %}
+  </div>
+
+  {% if applicant.resume %}
+  <div class="applicant-section">
+    <h3>Resume</h3>
+    <p><a href="{{ applicant.resume }}" target="_blank" rel="noopener" class="button positive">View Resume</a></p>
+  </div>
+  {% endif %}
+
+  <div class="applicant-section demographics">
+    <h3>Demographics</h3>
+    <p><strong>Age:</strong> {{ applicant.age or 'Not specified' }}</p>
+    <p><strong>Gender:</strong> {{ applicant.gender or 'Not specified' }}</p>
+    <p><strong>Country:</strong> {{ applicant.country or 'Not specified' }}</p>
+    {% if applicant.race %}<p><strong>Race/Ethnicity:</strong> {{ applicant.race }}</p>{% endif %}
+  </div>
+
+  <div class="applicant-section logistics">
+    <h3>Logistics</h3>
+    <p><strong>Travel Reimbursement Requested:</strong> {{ 'Yes' if applicant.travel_reimbursement else 'No' }}</p>
+    {% if applicant.driving is not none %}<p><strong>Driving:</strong> {{ 'Yes' if applicant.driving else 'No' }}</p>{% endif %}
+    {% if applicant.travel_method %}<p><strong>Travel Method:</strong> {{ applicant.travel_method }}</p>{% endif %}
+    {% if applicant.travel_cost %}<p><strong>Estimated Travel Cost:</strong> ${{ applicant.travel_cost }}</p>{% endif %}
+    <p><strong>Shirt Size:</strong> {{ applicant.shirt_size or 'Not specified' }}</p>
+    {% if applicant.dietary_restriction %}<p><strong>Dietary Restrictions:</strong> {{ applicant.dietary_restriction }}</p>{% endif %}
+    {% if applicant.allergies %}<p><strong>Allergies:</strong> {{ applicant.allergies }}</p>{% endif %}
+  </div>
+</div>

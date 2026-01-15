@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5001:5000"
+    environment:
+      - DATABASE_URL=postgresql://gavel:gavel@db:5432/gavel
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-this-in-production}
+      - AUTH_LOGIN_URL=${AUTH_LOGIN_URL:-http://localhost:3000/login}
+      - AUTH_ENVIRONMENT=${AUTH_ENVIRONMENT:-production}
+      - MIN_JUDGE_ROLE=${MIN_JUDGE_ROLE:-2}
+      - MIN_ADMIN_ROLE=${MIN_ADMIN_ROLE:-4}
+      - HACKPSU_API_KEY=${HACKPSU_API_KEY:-}
+      - HACKPSU_API_BASE_URL=${HACKPSU_API_BASE_URL:-https://apiv3.hackpsu.org}
+      - HACKPSU_SERVICE_TOKEN=${HACKPSU_SERVICE_TOKEN:-}
+      - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-30}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-hackpsu-408118}
+      - FIREBASE_API_KEY=${FIREBASE_API_KEY:-AIzaSyBG636oXijUAzCq6Makd2DNU_0WzPJRw8s}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+      - DISABLE_EMAIL=true
+      - PROXY=true
+      - IGNORE_CONFIG_FILE=true
+    # Uncomment to mount Firebase service account for API sync:
+    # volumes:
+    #   - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  celery:
+    build: .
+    command: celery -A gavel.celery worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://gavel:gavel@db:5432/gavel
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+      - AUTH_ENVIRONMENT=${AUTH_ENVIRONMENT:-production}
+      - HACKPSU_API_BASE_URL=${HACKPSU_API_BASE_URL:-https://apiv3.hackpsu.org}
+      - HACKPSU_SERVICE_TOKEN=${HACKPSU_SERVICE_TOKEN:-}
+      - IGNORE_CONFIG_FILE=true
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  celery-beat:
+    build: .
+    command: celery -A gavel.celery beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://gavel:gavel@db:5432/gavel
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+      - HACKPSU_SERVICE_TOKEN=${HACKPSU_SERVICE_TOKEN:-}
+      - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-30}
+      - IGNORE_CONFIG_FILE=true
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  db:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=gavel
+      - POSTGRES_PASSWORD=gavel
+      - POSTGRES_DB=gavel
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gavel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

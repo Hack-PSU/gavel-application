@@ -4,6 +4,11 @@ from gavel.constants import *
 import gavel.settings as settings
 import gavel.utils as utils
 import gavel.crowd_bt as crowd_bt
+from gavel.firebase_auth import (
+    verify_hackpsu_session,
+    sync_annotator_from_auth_server,
+    hackpsu_auth_required,
+)
 from flask import (
     redirect,
     render_template,
@@ -15,6 +20,7 @@ from numpy.random import choice, random, shuffle
 from functools import wraps
 from datetime import datetime
 
+
 def requires_open(redirect_to):
     def decorator(f):
         @wraps(f)
@@ -25,6 +31,7 @@ def requires_open(redirect_to):
                 return f(*args, **kwargs)
         return decorated
     return decorator
+
 
 def requires_active_annotator(redirect_to):
     def decorator(f):
@@ -41,6 +48,13 @@ def requires_active_annotator(redirect_to):
 
 @app.route('/')
 def index():
+    # Check Firebase session first (new auth method)
+    firebase_user = verify_hackpsu_session()
+    if firebase_user:
+        annotator = sync_annotator_from_auth_server(firebase_user)
+        if annotator:
+            session[ANNOTATOR_ID] = annotator.id
+
     annotator = get_current_annotator()
     if annotator is None:
         return render_template(
@@ -67,9 +81,18 @@ def index():
                 content=utils.render_markdown(settings.WAIT_MESSAGE)
             )
         elif annotator.prev is None:
-            return render_template('begin.html', item=annotator.next)
+            # Pass as both 'item' and 'applicant' for template compatibility
+            return render_template('begin.html', item=annotator.next, applicant=annotator.next)
         else:
-            return render_template('vote.html', prev=annotator.prev, next=annotator.next)
+            # Pass as both 'prev/next' and with 'applicant' suffix for compatibility
+            return render_template(
+                'vote.html',
+                prev=annotator.prev,
+                next=annotator.next,
+                prev_applicant=annotator.prev,
+                next_applicant=annotator.next
+            )
+
 
 @app.route('/vote', methods=['POST'])
 @requires_open(redirect_to='index')
@@ -90,7 +113,7 @@ def vote():
                         perform_vote(annotator, next_won=True)
                         decision = Decision(annotator, winner=annotator.next, loser=annotator.prev)
                     db.session.add(decision)
-                annotator.next.viewed.append(annotator) # counted as viewed even if deactivated
+                annotator.next.viewed.append(annotator)  # counted as viewed even if deactivated
                 annotator.prev = annotator.next
                 annotator.ignore.append(annotator.prev)
             annotator.update_next(choose_next(annotator))
@@ -98,31 +121,37 @@ def vote():
     with_retries(tx)
     return redirect(url_for('index'))
 
+
 @app.route('/begin', methods=['POST'])
 @requires_open(redirect_to='index')
 @requires_active_annotator(redirect_to='index')
 def begin():
     def tx():
         annotator = get_current_annotator()
-        if annotator.next.id == int(request.form['item_id']):
+        # Accept both 'item_id' and 'applicant_id' for backwards compatibility
+        applicant_id = request.form.get('applicant_id') or request.form.get('item_id')
+        if annotator.next.id == int(applicant_id):
             annotator.ignore.append(annotator.next)
             if request.form['action'] == 'Continue':
                 annotator.next.viewed.append(annotator)
                 annotator.prev = annotator.next
                 annotator.update_next(choose_next(annotator))
             elif request.form['action'] == 'Skip':
-                annotator.next = None # will be reset in index
+                annotator.next = None  # will be reset in index
             db.session.commit()
     with_retries(tx)
     return redirect(url_for('index'))
+
 
 @app.route('/logout')
 def logout():
     session.pop(ANNOTATOR_ID, None)
     return redirect(url_for('index'))
 
+
 @app.route('/login/<secret>/')
 def login(secret):
+    """Magic link login (kept for backwards compatibility)."""
     annotator = Annotator.by_secret(secret)
     if annotator is None:
         session.pop(ANNOTATOR_ID, None)
@@ -130,6 +159,7 @@ def login(secret):
     else:
         session[ANNOTATOR_ID] = annotator.id
     return redirect(url_for('index'))
+
 
 @app.route('/welcome/')
 @requires_open(redirect_to='index')
@@ -139,6 +169,7 @@ def welcome():
         'welcome.html',
         content=utils.render_markdown(settings.WELCOME_MESSAGE)
     )
+
 
 @app.route('/welcome/done', methods=['POST'])
 @requires_open(redirect_to='index')
@@ -152,69 +183,80 @@ def welcome_done():
     with_retries(tx)
     return redirect(url_for('index'))
 
+
 def get_current_annotator():
     return Annotator.by_id(session.get(ANNOTATOR_ID, None))
 
-def preferred_items(annotator):
+
+def preferred_applicants(annotator):
     '''
-    Return a list of preferred items for the given annotator to look at next.
+    Return a list of preferred applicants for the given annotator to review next.
 
     This method uses a variety of strategies to try to select good candidate
-    projects.
+    applicants for pairwise comparison.
     '''
-    items = []
-    ignored_ids = {i.id for i in annotator.ignore}
+    applicants = []
+    ignored_ids = {a.id for a in annotator.ignore}
 
     if ignored_ids:
-        available_items = Item.query.filter(
-            (Item.active == True) & (~Item.id.in_(ignored_ids))
+        available_applicants = Applicant.query.filter(
+            (Applicant.active == True) & (~Applicant.id.in_(ignored_ids))
         ).all()
     else:
-        available_items = Item.query.filter(Item.active == True).all()
+        available_applicants = Applicant.query.filter(Applicant.active == True).all()
 
-    prioritized_items = [i for i in available_items if i.prioritized]
+    prioritized_applicants = [a for a in available_applicants if a.prioritized]
 
-    items = prioritized_items if prioritized_items else available_items
+    applicants = prioritized_applicants if prioritized_applicants else available_applicants
 
+    # Check for busy applicants (recently assigned to other judges)
     annotators = Annotator.query.filter(
         (Annotator.active == True) & (Annotator.next != None) & (Annotator.updated != None)
     ).all()
-    busy = {i.next.id for i in annotators if \
-        (datetime.utcnow() - i.updated).total_seconds() < settings.TIMEOUT * 60}
-    nonbusy = [i for i in items if i.id not in busy]
-    preferred = nonbusy if nonbusy else items
+    busy = {a.next.id for a in annotators if
+            (datetime.utcnow() - a.updated).total_seconds() < settings.TIMEOUT * 60}
+    nonbusy = [a for a in applicants if a.id not in busy]
+    preferred = nonbusy if nonbusy else applicants
 
-    less_seen = [i for i in preferred if len(i.viewed) < settings.MIN_VIEWS]
+    # Prefer applicants with fewer views
+    less_seen = [a for a in preferred if len(a.viewed) < settings.MIN_VIEWS]
 
     return less_seen if less_seen else preferred
+
+
+# Alias for backwards compatibility
+preferred_items = preferred_applicants
+
 
 def maybe_init_annotator():
     def tx():
         annotator = get_current_annotator()
         if annotator.next is None:
-            items = preferred_items(annotator)
-            if items:
-                annotator.update_next(choice(items))
+            applicants = preferred_applicants(annotator)
+            if applicants:
+                annotator.update_next(choice(applicants))
                 db.session.commit()
     with_retries(tx)
 
-def choose_next(annotator):
-    items = preferred_items(annotator)
 
-    shuffle(items) # useful for argmax case as well in the case of ties
-    if items:
+def choose_next(annotator):
+    applicants = preferred_applicants(annotator)
+
+    shuffle(applicants)  # useful for argmax case as well in the case of ties
+    if applicants:
         if random() < crowd_bt.EPSILON:
-            return items[0]
+            return applicants[0]
         else:
-            return crowd_bt.argmax(lambda i: crowd_bt.expected_information_gain(
+            return crowd_bt.argmax(lambda a: crowd_bt.expected_information_gain(
                 annotator.alpha,
                 annotator.beta,
                 annotator.prev.mu,
                 annotator.prev.sigma_sq,
-                i.mu,
-                i.sigma_sq), items)
+                a.mu,
+                a.sigma_sq), applicants)
     else:
         return None
+
 
 def perform_vote(annotator, next_won):
     if next_won:

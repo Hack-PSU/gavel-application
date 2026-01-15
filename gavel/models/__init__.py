@@ -3,21 +3,31 @@ from flask_sqlalchemy import SQLAlchemy
 import sqlalchemy.exc
 import psycopg2.errors
 
+
 class SerializableAlchemy(SQLAlchemy):
     def apply_driver_hacks(self, app, info, options):
         if not 'isolation_level' in options:
             # XXX is this slow? are there better ways?
             options['isolation_level'] = 'SERIALIZABLE'
         return super(SerializableAlchemy, self).apply_driver_hacks(app, info, options)
+
+
 db = SerializableAlchemy()
 
+# Import models after db is created
+# Order matters due to foreign key dependencies
+from gavel.models.hackathon import Hackathon
 from gavel.models.annotator import Annotator, ignore_table
-from gavel.models.item import Item, view_table
+from gavel.models.applicant import Applicant, view_table
 from gavel.models.decision import Decision
 from gavel.models.setting import Setting
 
+# Keep Item as an alias for backwards compatibility in code that might reference it
+Item = Applicant
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.expression import desc
+
 
 def with_retries(tx_func):
     '''

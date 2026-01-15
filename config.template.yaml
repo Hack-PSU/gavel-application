@@ -184,3 +184,8 @@ email_body: null
 # event to this list (https://github.com/anishathalye/gavel/wiki/Users), at the
 # very least.
 send_stats: null
+
+# HackPSU API Key Configuration
+# can also be specified as the 'HACKPSU_API_KEY' environment variable
+# defaults to 'None'
+hackpsu_api_key: null

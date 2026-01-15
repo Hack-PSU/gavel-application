@@ -354,3 +354,23 @@ input[type=submit].neutral {
     text-align: center;
   }
 }
+
+// Side-by-side comparison for larger screens
+.comparison-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 992px) {
+  .comparison-wrapper {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  
+  .comparison-item {
+    flex: 1;
+    width: 50%; /* Fallback */
+    // Ensure smooth height matching if needed, though stretch handles it
+  }
+}

@@ -9,65 +9,81 @@
 
 <div class="item">
   <div class="banner">
-    <h2>Stats</h2>
+    <h2>HackPSU Sync</h2>
   </div>
   <div class="info">
-    <p><strong>Votes: </strong>{{ votes }}</p>
+    <p><strong>Active Hackathon:</strong> {{ hackathon.name if hackathon else 'None' }}</p>
+    <p><strong>Last Synced:</strong> {{ hackathon.last_synced | utcdatetime_local if hackathon and hackathon.last_synced else 'Never' }}</p>
+    <p><strong>Total Applicants:</strong> {{ applicants | length }}</p>
+
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+      <form action="{{ url_for('sync') }}" method="post">
+        <input type="submit" name="action" value="sync_hackathon" class="positive">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      </form>
+      <form action="{{ url_for('sync') }}" method="post">
+        <input type="submit" name="action" value="sync_applicants" class="positive">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      </form>
+    </div>
   </div>
 </div>
 
 <div class="item">
   <div class="banner">
-    <h2>Projects</h2>
+    <h2>Stats</h2>
   </div>
   <div class="info">
-    <table id="items">
+    <p><strong>Votes: </strong>{{ votes }}</p>
+    <p><strong>Active Applicants: </strong>{{ applicants | selectattr('active') | list | length }}</p>
+    <p><strong>Active Judges: </strong>{{ annotators | selectattr('active') | list | length }}</p>
+  </div>
+</div>
+
+<div class="item">
+  <div class="banner">
+    <h2>Applicants</h2>
+  </div>
+  <div class="info">
+    <table id="applicants">
       <thead>
         <tr>
-          <th data-sort-method="number">Id</th>
+          <th data-sort-method="number">Rank</th>
           <th data-sort-method="caseInsensitiveSort">Name</th>
-          <th data-sort-method="caseInsensitiveSort">Location</th>
-          <th data-sort-method="caseInsensitiveSort">Description</th>
+          <th data-sort-method="caseInsensitiveSort">Email</th>
+          <th data-sort-method="caseInsensitiveSort">University</th>
           <th class="sort-default" data-sort-method="number" data-sort-order="desc">Mu</th>
-          <th data-sort-method="number">Sigma Squared</th>
+          <th data-sort-method="number">Sigma Sq</th>
           <th data-sort-method="number">Votes</th>
           <th data-sort-method="number">Seen</th>
           <th data-sort-method="number" data-sort-order="desc">Skipped</th>
           <th data-sort-method="caseInsensitiveSort" data-sort-order="desc">Prioritize</th>
           <th data-sort-method="caseInsensitiveSort">Active</th>
-          <th class="no-sort">Delete</th>
         </tr>
       </thead>
       <tbody>
-        {% for item in items %}
-        <tr class="{{ 'disabled' if not item.active else 'prioritized' if item.prioritized else '' }}">
-          <td><a href="{{ url_for('item_detail', item_id=item.id) }}" class="colored">{{ item.id }}</a></td>
-          <td>{{ item.name }}</td>
-          <td>{{ item.location }}</td>
-          <td class="preserve-formatting">{{ item.description }}</td>
-          <td>{{ item.mu | round(4) }}</td>
-          <td>{{ item.sigma_sq | round(4) }}</td>
-          <td>{{ item_counts.get(item.id, 0) }}</td>
-          <td>{{ item.viewed | length }}</td>
-          <td>{{ skipped.get(item.id, 0) }}</td>
-          <td class="compact" data-sort="{{ item.prioritized }}">
-            <form action="{{ url_for('item') }}" method="post">
-              <input type="submit" name="action" value="{{ 'Prioritize' if not item.prioritized else 'Cancel' }}" class="{{ 'positive' if not item.prioritized else 'negative' }}">
-              <input type="hidden" name="item_id" value="{{ item.id }}">
+        {% for applicant in applicants %}
+        <tr class="{{ 'disabled' if not applicant.active else 'prioritized' if applicant.prioritized else '' }}">
+          <td>{{ loop.index }}</td>
+          <td><a href="{{ url_for('applicant_detail', applicant_id=applicant.id) }}" class="colored">{{ applicant.full_name }}</a></td>
+          <td>{{ applicant.email }}</td>
+          <td>{{ applicant.university or '-' }}</td>
+          <td>{{ applicant.mu | round(4) }}</td>
+          <td>{{ applicant.sigma_sq | round(4) }}</td>
+          <td>{{ applicant_counts.get(applicant.id, 0) }}</td>
+          <td>{{ applicant.viewed | length }}</td>
+          <td>{{ skipped.get(applicant.id, 0) }}</td>
+          <td class="compact" data-sort="{{ applicant.prioritized }}">
+            <form action="{{ url_for('applicant_action') }}" method="post">
+              <input type="submit" name="action" value="{{ 'Prioritize' if not applicant.prioritized else 'Cancel' }}" class="{{ 'positive' if not applicant.prioritized else 'negative' }}">
+              <input type="hidden" name="applicant_id" value="{{ applicant.id }}">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             </form>
           </td>
-          <td class="compact" data-sort="{{ item.active }}">
-            <form action="{{ url_for('item') }}" method="post">
-              <input type="submit" name="action" value="{{ 'Disable' if item.active else 'Enable' }}" class="{{ 'negative' if item.active else 'positive' }}">
-              <input type="hidden" name="item_id" value="{{ item.id }}">
-              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            </form>
-          </td>
-          <td class="compact">
-            <form action="{{ url_for('item') }}" method="post">
-              <input type="submit" name="action" value="Delete" class="negative">
-              <input type="hidden" name="item_id" value="{{ item.id }}">
+          <td class="compact" data-sort="{{ applicant.active }}">
+            <form action="{{ url_for('applicant_action') }}" method="post">
+              <input type="submit" name="action" value="{{ 'Disable' if applicant.active else 'Enable' }}" class="{{ 'negative' if applicant.active else 'positive' }}">
+              <input type="hidden" name="applicant_id" value="{{ applicant.id }}">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             </form>
           </td>
@@ -77,7 +93,8 @@
     </table>
   </div>
   <div class="api-link">
-    <a href="{{ url_for('item_dump') }}">Download CSV</a>
+    <a href="{{ url_for('applicant_dump') }}">Download CSV</a> |
+    <a href="{{ url_for('applicant_full_dump') }}">Download Full CSV</a>
   </div>
 </div>
 
@@ -93,11 +110,11 @@
           <th data-sort-method="caseInsensitiveSort">Name</th>
           <th data-sort-method="caseInsensitiveSort">Email</th>
           <th data-sort-method="caseInsensitiveSort">Description</th>
+          <th data-sort-method="number">Privilege</th>
           <th data-sort-method="number">Votes</th>
           <th data-sort-method="number">Next (Id)</th>
           <th data-sort-method="number">Previous (Id)</th>
           <th data-sort-method="number" data-sort-order="desc">Updated</th>
-          <th class="no-sort">Email</th>
           <th data-sort-method="caseInsensitiveSort">Active</th>
           <th class="no-sort">Delete</th>
         </tr>
@@ -109,17 +126,11 @@
           <td>{{ annotator.name }}</td>
           <td>{{ annotator.email }}</td>
           <td>{{ annotator.description }}</td>
+          <td>{{ annotator.privilege_level }}</td>
           <td>{{ counts.get(annotator.id, 0) }}</td>
           <td data-sort="{{ annotator.next_id or -1 }}">{{ annotator.next_id }}</td>
           <td data-sort="{{ annotator.prev_id or -1 }}">{{ annotator.prev_id }}</td>
           <td data-sort="{{ annotator.updated | utcdatetime_epoch }}">{{ annotator.updated | utcdatetime_local }}</td>
-          <td class="compact">
-            <form action="{{ url_for('annotator') }}" method="post">
-              <input type="submit" name="action" value="Email" class="neutral">
-              <input type="hidden" name="annotator_id" value="{{ annotator.id }}">
-              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            </form>
-          </td>
           <td class="compact" data-sort="{{ annotator.active }}">
             <form action="{{ url_for('annotator') }}" method="post">
               <input type="submit" name="action" value="{{ 'Disable' if annotator.active else 'Enable' }}" class="{{ 'negative' if annotator.active else 'positive' }}">
@@ -146,27 +157,10 @@
 
 <div class="item">
   <div class="banner">
-    <h2>Add Projects</h2>
+    <h2>Add Judges (Manual)</h2>
   </div>
   <div class="info">
-    <p>Add name, location, description (CSV format)</p>
-    <textarea name="data" form="item_form"></textarea>
-    <form action="{{ url_for('item') }}" method="post" id="item_form" enctype="multipart/form-data">
-      <div class="upload-container">
-        <span class="field">Or upload a file here:</span>
-        <input type="file" name="file" accept=".csv,.xls,.xlsx">
-      </div>
-      <input type="submit" name="action" value="Submit" class="button-full positive">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-    </form>
-  </div>
-</div>
-<div class="item">
-  <div class="banner">
-    <h2>Add Judges</h2>
-  </div>
-  <div class="info">
-    <p>Add name, email, description (CSV format)</p>
+    <p>Add name, email, description (CSV format) - Note: Judges are typically synced via HackPSU authentication</p>
     <textarea name="data" form="annotator_form"></textarea>
     <form action="{{ url_for('annotator') }}" method="post" id="annotator_form" enctype="multipart/form-data">
       <div class="upload-container">
@@ -214,7 +208,7 @@
 <script src="{{ url_for('static', filename='js/vendor/tablesort.number.js') }}"></script>
 <script>
 var tables = [
-  document.getElementById('items'),
+  document.getElementById('applicants'),
   document.getElementById('annotators'),
 ];
 for (var i = 0; i < tables.length; i++) {

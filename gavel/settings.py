@@ -68,10 +68,10 @@ c = Config(CONFIG_FILE)
 # 'config.vagrant.yaml'
 SERVER_NAME =          c.get('server_name',     'SERVER_NAME',               default=None)
 PROXY =          _bool(c.get('proxy',           'PROXY',                     default=False))
-ADMIN_PASSWORD =       c.get('admin_password',  'ADMIN_PASSWORD')
+ADMIN_PASSWORD =       c.get('admin_password',  'ADMIN_PASSWORD',            default='change-this-in-production')
 DB_URI = _postgres_uri(c.get('db_uri',          ['DATABASE_URL', 'DB_URI'],  default='postgresql://localhost/gavel'))
 BROKER_URI =           c.get('broker_uri',      ['REDIS_URL', 'BROKER_URI'], default='redis://localhost:6379/0')
-SECRET_KEY =           c.get('secret_key',      'SECRET_KEY')
+SECRET_KEY =           c.get('secret_key',      'SECRET_KEY',                default='change-this-in-production')
 MIN_VIEWS =        int(c.get('min_views',       'MIN_VIEWS',                 default=2))
 TIMEOUT =        float(c.get('timeout',         'TIMEOUT',                   default=5.0)) # in minutes
 WELCOME_MESSAGE =      c.get('welcome_message',                              default=constants.DEFAULT_WELCOME_MESSAGE)
@@ -82,9 +82,9 @@ WAIT_MESSAGE =         c.get('wait_message',                                 def
 DISABLE_EMAIL =  _bool(c.get('disable_email',   'DISABLE_EMAIL',             default=False))
 EMAIL_HOST =           c.get('email_host',      'EMAIL_HOST',                default='smtp.gmail.com')
 EMAIL_PORT =       int(c.get('email_port',      'EMAIL_PORT',                default=587))
-EMAIL_FROM =           c.get('email_from',      'EMAIL_FROM')
-EMAIL_USER =           c.get('email_user',      'EMAIL_USER')
-EMAIL_PASSWORD =       c.get('email_password',  'EMAIL_PASSWORD')
+EMAIL_FROM =           c.get('email_from',      'EMAIL_FROM',                default='noreply@example.com')
+EMAIL_USER =           c.get('email_user',      'EMAIL_USER',                default='')
+EMAIL_PASSWORD =       c.get('email_password',  'EMAIL_PASSWORD',            default='')
 EMAIL_AUTH_MODE =      c.get('email_auth_mode', 'EMAIL_AUTH_MODE',           default='tls').lower()
 EMAIL_CC =       _list(c.get('email_cc',        'EMAIL_CC',                  default=[]))
 EMAIL_SUBJECT =        c.get('email_subject',                                default=constants.DEFAULT_EMAIL_SUBJECT)
@@ -92,3 +92,15 @@ EMAIL_BODY =           c.get('email_body',                                   def
 SEND_STATS =     _bool(c.get('send_stats',      'SEND_STATS',                default=True))
 USE_SENDGRID =   _bool(c.get('use_sendgrid',    'USE_SENDGRID',              default=False))
 SENDGRID_API_KEY =     c.get('sendgrid_api_key', 'SENDGRID_API_KEY',         default=None)
+
+# HackPSU Firebase Authentication Settings
+AUTH_LOGIN_URL =       c.get('auth_login_url',   'AUTH_LOGIN_URL',           default='http://localhost:3000/login')
+AUTH_ENVIRONMENT =     c.get('auth_environment', 'AUTH_ENVIRONMENT',         default='production')
+MIN_JUDGE_ROLE =   int(c.get('min_judge_role',   'MIN_JUDGE_ROLE',           default=2))
+MIN_ADMIN_ROLE =   int(c.get('min_admin_role',   'MIN_ADMIN_ROLE',           default=4))
+
+# HackPSU API Settings
+HACKPSU_API_BASE_URL = c.get('hackpsu_api_base_url', 'HACKPSU_API_BASE_URL', default='https://apiv3.hackpsu.org')
+HACKPSU_API_KEY =      c.get('hackpsu_api_key',      'HACKPSU_API_KEY',      default=None)
+HACKPSU_SERVICE_TOKEN = c.get('hackpsu_service_token', 'HACKPSU_SERVICE_TOKEN', default=None)
+SYNC_INTERVAL_MINUTES = int(c.get('sync_interval_minutes', 'SYNC_INTERVAL_MINUTES', default=30))

@@ -1,0 +1,227 @@
+{% extends "layout.html" %}
+{% block title %}Applicant{% endblock %}
+{% block content %}
+<div class="item">
+  <div class="banner" id="admin-header">
+    <a href="{{ url_for('admin') }}"><h1>Applicant Details</h1></a>
+  </div>
+  <div class="info">
+    <h2>{{ applicant.full_name }}</h2>
+
+    <h3>Ranking</h3>
+    <table>
+      <tr>
+        <th>Internal ID</th>
+        <td>{{ applicant.id }}</td>
+      </tr>
+      <tr>
+        <th>Mu (Score)</th>
+        <td>{{ applicant.mu | round(4) }}</td>
+      </tr>
+      <tr>
+        <th>Sigma Squared</th>
+        <td>{{ applicant.sigma_sq | round(4) }}</td>
+      </tr>
+      <tr>
+        <th>Active</th>
+        <td>{{ 'Yes' if applicant.active else 'No' }}</td>
+      </tr>
+      <tr>
+        <th>Prioritized</th>
+        <td>{{ 'Yes' if applicant.prioritized else 'No' }}</td>
+      </tr>
+    </table>
+
+    <h3>Contact Information</h3>
+    <table>
+      <tr>
+        <th>HackPSU User ID</th>
+        <td>{{ applicant.hackpsu_user_id }}</td>
+      </tr>
+      <tr>
+        <th>Email</th>
+        <td>{{ applicant.email }}</td>
+      </tr>
+      <tr>
+        <th>Phone</th>
+        <td>{{ applicant.phone or '-' }}</td>
+      </tr>
+      <tr>
+        <th>LinkedIn</th>
+        <td>{% if applicant.linkedin_url %}<a href="{{ applicant.linkedin_url }}" target="_blank">{{ applicant.linkedin_url }}</a>{% else %}-{% endif %}</td>
+      </tr>
+    </table>
+
+    <h3>Education</h3>
+    <table>
+      <tr>
+        <th>University</th>
+        <td>{{ applicant.university or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Major</th>
+        <td>{{ applicant.major or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Academic Year</th>
+        <td>{{ applicant.academic_year or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Institution Type</th>
+        <td>{{ applicant.educational_institution_type or '-' }}</td>
+      </tr>
+    </table>
+
+    <h3>Experience</h3>
+    <table>
+      <tr>
+        <th>Coding Experience</th>
+        <td class="preserve-formatting">{{ applicant.coding_experience or '-' }}</td>
+      </tr>
+      <tr>
+        <th>First Hackathon</th>
+        <td>{{ 'Yes' if applicant.first_hackathon else 'No' if applicant.first_hackathon is not none else '-' }}</td>
+      </tr>
+    </table>
+
+    <h3>Application Responses</h3>
+    <table>
+      <tr>
+        <th>Project Idea</th>
+        <td class="preserve-formatting">{{ applicant.project or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Expectations</th>
+        <td class="preserve-formatting">{{ applicant.expectations or '-' }}</td>
+      </tr>
+      <tr>
+        <th>What Excites Them</th>
+        <td class="preserve-formatting">{{ applicant.excitement or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Referral</th>
+        <td>{{ applicant.referral or '-' }}</td>
+      </tr>
+    </table>
+
+    {% if applicant.resume %}
+    <h3>Resume</h3>
+    <p><a href="{{ applicant.resume }}" target="_blank" class="button positive">View Resume</a></p>
+    {% endif %}
+
+    <h3>Demographics</h3>
+    <table>
+      <tr>
+        <th>Age</th>
+        <td>{{ applicant.age or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Gender</th>
+        <td>{{ applicant.gender or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Country</th>
+        <td>{{ applicant.country or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Race/Ethnicity</th>
+        <td>{{ applicant.race or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Veteran Status</th>
+        <td>{{ applicant.veteran or '-' }}</td>
+      </tr>
+    </table>
+
+    <h3>Logistics</h3>
+    <table>
+      <tr>
+        <th>Travel Reimbursement</th>
+        <td>{{ 'Yes' if applicant.travel_reimbursement else 'No' }}</td>
+      </tr>
+      <tr>
+        <th>Driving</th>
+        <td>{{ 'Yes' if applicant.driving else 'No' if applicant.driving is not none else '-' }}</td>
+      </tr>
+      <tr>
+        <th>Travel Method</th>
+        <td>{{ applicant.travel_method or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Travel Cost</th>
+        <td>{{ '$' ~ applicant.travel_cost if applicant.travel_cost else '-' }}</td>
+      </tr>
+      <tr>
+        <th>Zip Code</th>
+        <td>{{ applicant.zip_code or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Shirt Size</th>
+        <td>{{ applicant.shirt_size or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Dietary Restrictions</th>
+        <td>{{ applicant.dietary_restriction or '-' }}</td>
+      </tr>
+      <tr>
+        <th>Allergies</th>
+        <td>{{ applicant.allergies or '-' }}</td>
+      </tr>
+    </table>
+
+    <h3>Judging Status</h3>
+    <table>
+      <tr>
+        <th>Seen By</th>
+        <td>
+          <ul>
+            {% for annotator in applicant.viewed %}
+            <li><a href="{{ url_for('annotator_detail', annotator_id=annotator.id) }}" class="colored">{{ annotator.name }} [{{ annotator.id }}]</a></li>
+            {% else %}
+            <li>None</li>
+            {% endfor %}
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <th>Currently Assigned To</th>
+        <td>
+          <ul>
+            {% for annotator in assigned %}
+            <li><a href="{{ url_for('annotator_detail', annotator_id=annotator.id) }}" class="colored">{{ annotator.name }} [{{ annotator.id }}]</a></li>
+            {% else %}
+            <li>None</li>
+            {% endfor %}
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <th>Skipped By</th>
+        <td>
+          <ul>
+            {% for annotator in skipped %}
+            <li><a href="{{ url_for('annotator_detail', annotator_id=annotator.id) }}" class="colored">{{ annotator.name }} [{{ annotator.id }}]</a></li>
+            {% else %}
+            <li>None</li>
+            {% endfor %}
+          </ul>
+        </td>
+      </tr>
+    </table>
+
+    <h3>Actions</h3>
+    <div style="display: flex; gap: 10px;">
+      <form action="{{ url_for('applicant_action') }}" method="post">
+        <input type="submit" name="action" value="{{ 'Prioritize' if not applicant.prioritized else 'Cancel' }}" class="{{ 'positive' if not applicant.prioritized else 'negative' }}">
+        <input type="hidden" name="applicant_id" value="{{ applicant.id }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      </form>
+      <form action="{{ url_for('applicant_action') }}" method="post">
+        <input type="submit" name="action" value="{{ 'Disable' if applicant.active else 'Enable' }}" class="{{ 'negative' if applicant.active else 'positive' }}">
+        <input type="hidden" name="applicant_id" value="{{ applicant.id }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -3,21 +3,21 @@
 {% block content %}
 <div class="item">
   <div class="banner-tight">
-    <h1>Start</h1>
+    <h1>First Applicant</h1>
   </div>
-  {% with item=item %}
-  {% include "_item.html" %}
+  {% with applicant=item %}
+  {% include "_applicant.html" %}
   {% endwith %}
 </div>
 
 <div class="item">
   <div class="banner" id="vote-header">
-    <h1>Vote</h1>
+    <h1>Begin</h1>
   </div>
 
   <div class="info">
     <form action="{{ url_for('begin') }}" method="post">
-      <p class="center">Comparison voting begins after you see your first project. Please click <b>CONTINUE</b> after seeing this project or <b>SKIP</b> if you cannot find this project.</p>
+      <p class="center">Comparison voting begins after you review your first applicant. Please click <b>CONTINUE</b> after reviewing this applicant or <b>SKIP</b> if you have a conflict of interest.</p>
       <div id="vote-continue" class="radio-button button-full button-gap">
         <input type="radio" name="action" id="vote-continue-radio" value="Continue">
         <label for="vote-continue-radio">Continue</label>
@@ -25,12 +25,12 @@
 
       <div id="vote-skip" class="radio-button button-full button-gap">
         <input type="radio" name="action" id="vote-skip-radio" value="Skip" checked>
-        <label for="vote-skip-radio">Skip</label>
+        <label for="vote-skip-radio">Skip (Conflict of Interest)</label>
       </div>
 
       <input type="submit" name="action" value="Submit" id="vote-submit" class="button-full button-gap">
 
-      <input type="hidden" name="item_id" value="{{ item.id }}">
+      <input type="hidden" name="applicant_id" value="{{ item.id }}">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     </form>
 

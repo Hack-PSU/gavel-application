@@ -14,56 +14,67 @@ SETTING_FALSE = 'false'
 # Defaults
 # these can be overridden via the config file
 DEFAULT_WELCOME_MESSAGE = '''
-Welcome to Gavel.
+Welcome to the HackPSU Applicant Review System.
 
 **Please read this important message carefully before continuing.**
 
-Gavel is a fully automated expo judging system that both tells you where to go
-and collects your votes.
+This system uses pairwise comparison to help rank hackathon applicants. You'll
+start by reviewing a single applicant, then for each subsequent applicant,
+you'll decide if they are a stronger or weaker candidate than the one you
+reviewed **immediately beforehand**.
 
-The system is based on the model of pairwise comparison. You'll start off by
-looking at a single submission, and then for every submission after that,
-you'll decide whether it's better or worse than the one you looked at
-**immediately beforehand**.
+When comparing applicants, consider factors such as:
+- Their project idea and creativity
+- Coding experience and technical background
+- Expectations and what they hope to gain
+- Overall enthusiasm and fit for HackPSU
 
-If at any point, you can't find a particular submission, you can click the
-'Skip' button and you will be assigned a new project. **Please don't skip
-unless absolutely necessary.**
+If you have a **conflict of interest** with an applicant (you know them
+personally, they attend your school, etc.), click **Skip** to be assigned
+a new applicant.
 
-Gavel makes it really simple for you to submit votes, but please think hard
-before you vote. **Once you make a decision, you can't take it back**.
+Please review each application thoroughly before voting. **Once you make a
+decision, you cannot change it**.
 '''.strip()
 
-DEFAULT_EMAIL_SUBJECT = 'Welcome to Gavel!'
+DEFAULT_EMAIL_SUBJECT = 'HackPSU Applicant Review - Your Access Link'
 
 DEFAULT_EMAIL_BODY = '''
 Hi {name},
 
-Welcome to Gavel, the online expo judging system. This email contains your
-magic link to the judging system.
+You've been invited to help review HackPSU applicants. This email contains your
+personal access link to the review system.
 
-DO NOT SHARE this email with others, as it contains your personal magic link.
+DO NOT SHARE this email with others, as it contains your personal access link.
 
 To access the system, visit {link}.
 
 Once you're in, please take the time to read the welcome message and
-instructions before continuing.
+instructions before continuing. Your reviews help us select the best candidates
+for HackPSU!
+
+Thank you for volunteering your time.
 '''.strip()
 
 DEFAULT_CLOSED_MESSAGE = '''
-The judging system is currently closed. Reload the page to try again.
+The applicant review system is currently closed. Reload the page to try again.
 '''.strip()
 
 DEFAULT_DISABLED_MESSAGE = '''
-Your account is currently disabled. Reload the page to try again.
+Your reviewer account is currently disabled. Please contact an admin if you
+believe this is an error.
 '''.strip()
 
 DEFAULT_LOGGED_OUT_MESSAGE = '''
-You are currently logged out. Open your magic link to get started.
+You are not currently logged in.
+
+To access the applicant review system, please log in through the HackPSU
+authentication system. If you were given a magic link, you can use that instead.
 '''.strip()
 
 DEFAULT_WAIT_MESSAGE = '''
-Wait for a little bit and reload the page to try again.
+There are no more applicants available for review at this time.
 
-If you've looked at all the projects already, then you're done.
+Please wait a moment and reload the page to try again. If you've reviewed all
+the applicants already, then you're done. Thank you for your help!
 '''.strip()

@@ -4,97 +4,151 @@ from gavel.constants import *
 import gavel.settings as settings
 import gavel.utils as utils
 import gavel.stats as stats
+from gavel.firebase_auth import hackpsu_admin_required, get_session_token, get_id_token_for_api
+from gavel.hackpsu_api import sync_hackathon, sync_applicants
 from flask import (
     redirect,
     render_template,
     request,
     url_for,
+    flash,
 )
 import urllib.parse
 import xlrd
 
 ALLOWED_EXTENSIONS = set(['csv', 'xlsx', 'xls'])
 
+
 @app.route('/admin/')
-@utils.requires_auth
+@hackpsu_admin_required
 def admin():
     stats.check_send_telemetry()
     annotators = Annotator.query.order_by(Annotator.id).all()
-    items = Item.query.order_by(Item.id).all()
+    applicants = Applicant.query.order_by(desc(Applicant.mu)).all()
+    hackathon = Hackathon.get_active()
     decisions = Decision.query.all()
+
+    # Count votes per annotator and applicant
     counts = {}
-    item_counts = {}
+    applicant_counts = {}
     for d in decisions:
         a = d.annotator_id
         w = d.winner_id
         l = d.loser_id
         counts[a] = counts.get(a, 0) + 1
-        item_counts[w] = item_counts.get(w, 0) + 1
-        item_counts[l] = item_counts.get(l, 0) + 1
-    viewed = {i.id: {a.id for a in i.viewed} for i in items}
+        applicant_counts[w] = applicant_counts.get(w, 0) + 1
+        applicant_counts[l] = applicant_counts.get(l, 0) + 1
+
+    # Calculate viewed and skipped counts
+    viewed = {a.id: {ann.id for ann in a.viewed} for a in applicants}
     skipped = {}
-    for a in annotators:
-        for i in a.ignore:
-            if a.id not in viewed[i.id]:
-                skipped[i.id] = skipped.get(i.id, 0) + 1
-    # settings
+    for ann in annotators:
+        for a in ann.ignore:
+            if a.id in viewed and ann.id not in viewed[a.id]:
+                skipped[a.id] = skipped.get(a.id, 0) + 1
+
+    # Settings
     setting_closed = Setting.value_of(SETTING_CLOSED) == SETTING_TRUE
+
     return render_template(
         'admin.html',
         annotators=annotators,
         counts=counts,
-        item_counts=item_counts,
+        applicant_counts=applicant_counts,
+        item_counts=applicant_counts,  # Backwards compatibility
         skipped=skipped,
-        items=items,
+        applicants=applicants,
+        items=applicants,  # Backwards compatibility
+        hackathon=hackathon,
         votes=len(decisions),
         setting_closed=setting_closed,
     )
 
-@app.route('/admin/item', methods=['POST'])
-@utils.requires_auth
-def item():
+
+@app.route('/admin/sync', methods=['POST'])
+@hackpsu_admin_required
+def sync():
+    """Handle HackPSU API sync actions."""
+    action = request.form.get('action')
+
+    # Get API token - prefers HACKPSU_SERVICE_TOKEN, falls back to session token
+    session_token = get_session_token()
+    auth_token = get_id_token_for_api(session_token)
+    
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Admin Sync Action: {action}")
+    logger.info(f"Status: auth_token={'Present' if auth_token else 'None'}, HACKPSU_API_KEY={'Present' if settings.HACKPSU_API_KEY else 'None'}")
+    if settings.HACKPSU_API_KEY:
+        logger.info(f"API Key First 4 chars: {settings.HACKPSU_API_KEY[:4]}")
+
+    # Check validity: Need either an auth token OR a configured API Key
+    if not auth_token and not settings.HACKPSU_API_KEY:
+        return utils.server_error(
+            'No API token or API Key available. Please set HACKPSU_API_KEY or HACKPSU_SERVICE_TOKEN.'
+        )
+
+    if action == 'sync_hackathon':
+        hackathon = sync_hackathon(auth_token)
+        if hackathon:
+            return redirect(url_for('admin'))
+        return utils.server_error('Failed to sync hackathon from HackPSU API. Check the server logs for details.')
+
+    elif action == 'sync_applicants':
+        hackathon = Hackathon.get_active()
+        if not hackathon:
+            return utils.user_error('No active hackathon. Please sync hackathon first.')
+        synced, errors = sync_applicants(hackathon.id, auth_token)
+        if errors > 0:
+            return utils.server_error(f'Sync completed with errors. Synced: {synced}, Errors: {errors}')
+        return redirect(url_for('admin'))
+
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/applicant', methods=['POST'])
+@hackpsu_admin_required
+def applicant_action():
+    """Handle applicant management actions."""
     action = request.form['action']
-    if action == 'Submit':
-        data = parse_upload_form()
-        if data:
-            # validate data
-            for index, row in enumerate(data):
-                if len(row) != 3:
-                    return utils.user_error('Bad data: row %d has %d elements (expecting 3)' % (index + 1, len(row)))
-            def tx():
-                for row in data:
-                    _item = Item(*row)
-                    db.session.add(_item)
-                db.session.commit()
-            with_retries(tx)
-    elif action == 'Prioritize' or action == 'Cancel':
-        item_id = request.form['item_id']
+    applicant_id = request.form.get('applicant_id') or request.form.get('item_id')
+
+    if action == 'Prioritize' or action == 'Cancel':
         target_state = action == 'Prioritize'
         def tx():
-            Item.by_id(item_id).prioritized = target_state
+            Applicant.by_id(applicant_id).prioritized = target_state
             db.session.commit()
         with_retries(tx)
+
     elif action == 'Disable' or action == 'Enable':
-        item_id = request.form['item_id']
         target_state = action == 'Enable'
         def tx():
-            Item.by_id(item_id).active = target_state
+            Applicant.by_id(applicant_id).active = target_state
             db.session.commit()
         with_retries(tx)
+
     elif action == 'Delete':
-        item_id = request.form['item_id']
         try:
             def tx():
-                db.session.execute(ignore_table.delete(ignore_table.c.item_id == item_id))
-                Item.query.filter_by(id=item_id).delete()
+                db.session.execute(ignore_table.delete(ignore_table.c.applicant_id == applicant_id))
+                Applicant.query.filter_by(id=applicant_id).delete()
                 db.session.commit()
             with_retries(tx)
         except IntegrityError as e:
             if isinstance(e.orig, psycopg2.errors.ForeignKeyViolation):
-                return utils.server_error("Projects can't be deleted once they have been voted on by a judge. You can use the 'disable' functionality instead, which has a similar effect, preventing the project from being shown to judges.")
+                return utils.server_error("Applicants can't be deleted once they have been voted on by a judge. You can use the 'disable' functionality instead.")
             else:
                 return utils.server_error(str(e))
+
     return redirect(url_for('admin'))
+
+
+# Keep /admin/item route for backwards compatibility
+@app.route('/admin/item', methods=['POST'])
+@hackpsu_admin_required
+def item():
+    """Backwards compatible route - redirects to applicant_action."""
+    return applicant_action()
 
 
 def allowed_file(filename):
@@ -119,25 +173,8 @@ def parse_upload_form():
     return data
 
 
-@app.route('/admin/item_patch', methods=['POST'])
-@utils.requires_auth
-def item_patch():
-    def tx():
-        item = Item.by_id(request.form['item_id'])
-        if not item:
-            return utils.user_error('Item %s not found ' % request.form['item_id'])
-        if 'location' in request.form:
-            item.location = request.form['location']
-        if 'name' in request.form:
-            item.name = request.form['name']
-        if 'description' in request.form:
-            item.description = request.form['description']
-        db.session.commit()
-    with_retries(tx)
-    return redirect(url_for('item_detail', item_id=item.id))
-
 @app.route('/admin/annotator', methods=['POST'])
-@utils.requires_auth
+@hackpsu_admin_required
 def annotator():
     action = request.form['action']
     if action == 'Submit':
@@ -150,9 +187,9 @@ def annotator():
                     return utils.user_error('Bad data: row %d has %d elements (expecting 3)' % (index + 1, len(row)))
             def tx():
                 for row in data:
-                    annotator = Annotator(*row)
-                    added.append(annotator)
-                    db.session.add(annotator)
+                    ann = Annotator(*row)
+                    added.append(ann)
+                    db.session.add(ann)
                 db.session.commit()
             with_retries(tx)
             try:
@@ -182,13 +219,14 @@ def annotator():
             with_retries(tx)
         except IntegrityError as e:
             if isinstance(e.orig, psycopg2.errors.ForeignKeyViolation):
-                return utils.server_error("Judges can't be deleted once they have voted on a project. You can use the 'disable' functionality instead, which has a similar effect, locking out the judge and preventing them from voting on any other projects.")
+                return utils.server_error("Judges can't be deleted once they have voted on an applicant. You can use the 'disable' functionality instead.")
             else:
                 return utils.server_error(str(e))
     return redirect(url_for('admin'))
 
+
 @app.route('/admin/setting', methods=['POST'])
-@utils.requires_auth
+@hackpsu_admin_required
 def setting():
     key = request.form['key']
     if key == 'closed':
@@ -198,53 +236,68 @@ def setting():
         db.session.commit()
     return redirect(url_for('admin'))
 
-@app.route('/admin/item/<item_id>/')
-@utils.requires_auth
-def item_detail(item_id):
-    item = Item.by_id(item_id)
-    if not item:
-        return utils.user_error('Item %s not found ' % item_id)
+
+@app.route('/admin/applicant/<applicant_id>/')
+@hackpsu_admin_required
+def applicant_detail(applicant_id):
+    applicant = Applicant.by_id(applicant_id)
+    if not applicant:
+        return utils.user_error('Applicant %s not found' % applicant_id)
     else:
-        assigned = Annotator.query.filter(Annotator.next == item).all()
-        viewed_ids = {i.id for i in item.viewed}
+        assigned = Annotator.query.filter(Annotator.next == applicant).all()
+        viewed_ids = {a.id for a in applicant.viewed}
         if viewed_ids:
             skipped = Annotator.query.filter(
-                Annotator.ignore.contains(item) & ~Annotator.id.in_(viewed_ids)
+                Annotator.ignore.contains(applicant) & ~Annotator.id.in_(viewed_ids)
             )
         else:
-            skipped = Annotator.query.filter(Annotator.ignore.contains(item))
+            skipped = Annotator.query.filter(Annotator.ignore.contains(applicant))
         return render_template(
-            'admin_item.html',
-            item=item,
+            'admin_applicant.html',
+            applicant=applicant,
+            item=applicant,  # Backwards compatibility
             assigned=assigned,
             skipped=skipped
         )
 
+
+# Keep /admin/item/<item_id>/ route for backwards compatibility
+@app.route('/admin/item/<item_id>/')
+@hackpsu_admin_required
+def item_detail(item_id):
+    """Backwards compatible route - redirects to applicant_detail."""
+    return applicant_detail(item_id)
+
+
 @app.route('/admin/annotator/<annotator_id>/')
-@utils.requires_auth
+@hackpsu_admin_required
 def annotator_detail(annotator_id):
-    annotator = Annotator.by_id(annotator_id)
-    if not annotator:
-        return utils.user_error('Annotator %s not found ' % annotator_id)
+    ann = Annotator.by_id(annotator_id)
+    if not ann:
+        return utils.user_error('Annotator %s not found' % annotator_id)
     else:
-        seen = Item.query.filter(Item.viewed.contains(annotator)).all()
-        ignored_ids = {i.id for i in annotator.ignore}
+        seen = Applicant.query.filter(Applicant.viewed.contains(ann)).all()
+        ignored_ids = {a.id for a in ann.ignore}
         if ignored_ids:
-            skipped = Item.query.filter(
-                Item.id.in_(ignored_ids) & ~Item.viewed.contains(annotator)
+            skipped = Applicant.query.filter(
+                Applicant.id.in_(ignored_ids) & ~Applicant.viewed.contains(ann)
             )
         else:
             skipped = []
         return render_template(
             'admin_annotator.html',
-            annotator=annotator,
-            login_link=annotator_link(annotator),
+            annotator=ann,
+            login_link=annotator_link(ann),
             seen=seen,
             skipped=skipped
         )
 
-def annotator_link(annotator):
-        return url_for('login', secret=annotator.secret, _external=True)
+
+def annotator_link(ann):
+    if ann.secret:
+        return url_for('login', secret=ann.secret, _external=True)
+    return None
+
 
 def email_invite_links(annotators):
     if settings.DISABLE_EMAIL or annotators is None:
@@ -253,11 +306,12 @@ def email_invite_links(annotators):
         annotators = [annotators]
 
     emails = []
-    for annotator in annotators:
-        link = annotator_link(annotator)
-        raw_body = settings.EMAIL_BODY.format(name=annotator.name, link=link)
-        body = '\n\n'.join(utils.get_paragraphs(raw_body))
-        emails.append((annotator.email, settings.EMAIL_SUBJECT, body))
+    for ann in annotators:
+        link = annotator_link(ann)
+        if link:
+            raw_body = settings.EMAIL_BODY.format(name=ann.name, link=link)
+            body = '\n\n'.join(utils.get_paragraphs(raw_body))
+            emails.append((ann.email, settings.EMAIL_SUBJECT, body))
 
     if settings.USE_SENDGRID and settings.SENDGRID_API_KEY != None:
         utils.send_sendgrid_emails(emails)
