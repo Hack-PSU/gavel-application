@@ -36,6 +36,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.prod
+          file: Dockerfile
           push: true
           tags: us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/gavel-applications/image:latest,us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/gavel/image:${{ github.sha }}
