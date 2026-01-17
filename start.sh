@@ -1,16 +1,20 @@
 #!/bin/bash
 set -e
 
+# Find PostgreSQL bin directory (auto-detect version)
+PG_BIN=$(dirname $(find /usr/lib/postgresql -name "pg_ctl" 2>/dev/null | head -1))
+echo "Using PostgreSQL binaries from: $PG_BIN"
+
 # Initialize PostgreSQL if needed
 if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
   echo "Initializing PostgreSQL database..."
-  su - postgres -c "/usr/lib/postgresql/15/bin/initdb -D /var/lib/postgresql/data"
+  su - postgres -c "$PG_BIN/initdb -D /var/lib/postgresql/data"
   echo "PostgreSQL initialized"
 fi
 
 # Start PostgreSQL
 echo "Starting PostgreSQL..."
-su - postgres -c "/usr/lib/postgresql/15/bin/pg_ctl -D /var/lib/postgresql/data -l /tmp/postgresql.log start"
+su - postgres -c "$PG_BIN/pg_ctl -D /var/lib/postgresql/data -l /tmp/postgresql.log start"
 
 # Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL to be ready..."
@@ -56,7 +60,7 @@ python initialize.py || true
 
 # Stop PostgreSQL (supervisor will manage it)
 echo "Stopping PostgreSQL for supervisor takeover..."
-su - postgres -c "/usr/lib/postgresql/15/bin/pg_ctl -D /var/lib/postgresql/data stop" || true
+su - postgres -c "$PG_BIN/pg_ctl -D /var/lib/postgresql/data stop" || true
 
 # Stop Redis (supervisor will manage it)
 echo "Stopping Redis for supervisor takeover..."

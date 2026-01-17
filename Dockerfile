@@ -65,14 +65,15 @@ ENV PYTHONUNBUFFERED=1 \
 # - ADMIN_PASSWORD
 # - HACKPSU_API_KEY (optional)
 
-# Create supervisor config
-RUN echo '[supervisord]\n\
+# Create supervisor config (auto-detect PostgreSQL version)
+RUN PG_BIN=$(dirname $(find /usr/lib/postgresql -name "postgres" | head -1)) && \
+    echo "[supervisord]\n\
 nodaemon=true\n\
 user=root\n\
 \n\
 [program:postgresql]\n\
 user=postgres\n\
-command=/usr/lib/postgresql/15/bin/postgres -D /var/lib/postgresql/data\n\
+command=${PG_BIN}/postgres -D /var/lib/postgresql/data\n\
 autostart=true\n\
 autorestart=true\n\
 stdout_logfile=/dev/stdout\n\
@@ -117,7 +118,7 @@ autorestart=true\n\
 stdout_logfile=/dev/stdout\n\
 stdout_logfile_maxbytes=0\n\
 stderr_logfile=/dev/stderr\n\
-stderr_logfile_maxbytes=0' > /etc/supervisor/conf.d/supervisord.conf
+stderr_logfile_maxbytes=0" > /etc/supervisor/conf.d/supervisord.conf
 
 # Copy startup script
 COPY start.sh /app/start.sh
