@@ -66,7 +66,7 @@ ENV PYTHONUNBUFFERED=1 \
 # - HACKPSU_API_KEY (optional)
 
 # Create supervisor config (auto-detect PostgreSQL version)
-RUN PG_BIN=$(dirname $(find /usr/lib/postgresql -name "postgres" | head -1)) && \
+RUN PG_BIN=$(find /usr/lib/postgresql -type d -name "bin" | head -1) && \
     echo "[supervisord]\n\
 nodaemon=true\n\
 user=root\n\
@@ -111,7 +111,7 @@ stderr_logfile=/dev/stderr\n\
 stderr_logfile_maxbytes=0\n\
 \n\
 [program:gavel]\n\
-command=gunicorn -b 0.0.0.0:5000 -w 4 --timeout 120 gavel:app\n\
+command=gunicorn -b 0.0.0.0:5000 -w 2 --timeout 120 gavel:app\n\
 directory=/app\n\
 autostart=true\n\
 autorestart=true\n\

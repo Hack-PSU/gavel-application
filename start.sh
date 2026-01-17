@@ -2,7 +2,7 @@
 set -e
 
 # Find PostgreSQL bin directory (auto-detect version)
-PG_BIN=$(dirname $(find /usr/lib/postgresql -name "pg_ctl" 2>/dev/null | head -1))
+PG_BIN=$(find /usr/lib/postgresql -type d -name "bin" 2>/dev/null | head -1)
 echo "Using PostgreSQL binaries from: $PG_BIN"
 
 # Initialize PostgreSQL if needed
