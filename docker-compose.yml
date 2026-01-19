@@ -34,14 +34,15 @@ services:
         condition: service_started
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
+      start_period: 60s
       retries: 3
 
   celery:
     build: .
-    command: celery -A gavel.celery worker --loglevel=info
+    command: celery -A gavel.celery worker --loglevel=info --concurrency=1
     environment:
       - DATABASE_URL=postgresql://gavel:gavel@db:5432/gavel
       - REDIS_URL=redis://redis:6379/0

@@ -39,20 +39,21 @@ if ! su - postgres -c "psql -d postgres -tAc \"SELECT 1 FROM pg_database WHERE d
   su - postgres -c "psql -d postgres -c \"CREATE DATABASE gavel OWNER gavel;\""
 fi
 
-# Start Redis
-echo "Starting Redis..."
-redis-server --bind 127.0.0.1 --daemonize yes --dir /var/lib/redis
+# Redis disabled for testing
+# # Start Redis
+# echo "Starting Redis..."
+# redis-server --bind 127.0.0.1 --daemonize yes --dir /var/lib/redis
 
-# Wait for Redis to be ready
-echo "Waiting for Redis to be ready..."
-for i in {1..10}; do
-  if redis-cli ping > /dev/null 2>&1; then
-    echo "Redis is ready"
-    break
-  fi
-  echo "Waiting for Redis... ($i/10)"
-  sleep 1
-done
+# # Wait for Redis to be ready
+# echo "Waiting for Redis to be ready..."
+# for i in {1..10}; do
+#   if redis-cli ping > /dev/null 2>&1; then
+#     echo "Redis is ready"
+#     break
+#   fi
+#   echo "Waiting for Redis... ($i/10)"
+#   sleep 1
+# done
 
 # Initialize Gavel database
 echo "Initializing Gavel database..."
@@ -62,9 +63,10 @@ python initialize.py || true
 echo "Stopping PostgreSQL for supervisor takeover..."
 su - postgres -c "$PG_BIN/pg_ctl -D /var/lib/postgresql/data stop" || true
 
-# Stop Redis (supervisor will manage it)
-echo "Stopping Redis for supervisor takeover..."
-redis-cli shutdown || true
+# Redis disabled for testing
+# # Stop Redis (supervisor will manage it)
+# echo "Stopping Redis for supervisor takeover..."
+# redis-cli shutdown || true
 
 sleep 2
 

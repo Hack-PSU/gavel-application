@@ -81,34 +81,34 @@ stdout_logfile_maxbytes=0\n\
 stderr_logfile=/dev/stderr\n\
 stderr_logfile_maxbytes=0\n\
 \n\
-[program:redis]\n\
-command=/usr/bin/redis-server --bind 127.0.0.1 --dir /var/lib/redis\n\
-autostart=true\n\
-autorestart=true\n\
-stdout_logfile=/dev/stdout\n\
-stdout_logfile_maxbytes=0\n\
-stderr_logfile=/dev/stderr\n\
-stderr_logfile_maxbytes=0\n\
+# [program:redis]\n\
+# command=/usr/bin/redis-server --bind 127.0.0.1 --dir /var/lib/redis\n\
+# autostart=true\n\
+# autorestart=true\n\
+# stdout_logfile=/dev/stdout\n\
+# stdout_logfile_maxbytes=0\n\
+# stderr_logfile=/dev/stderr\n\
+# stderr_logfile_maxbytes=0\n\
 \n\
-[program:celery]\n\
-command=celery -A gavel.celery worker --loglevel=info\n\
-directory=/app\n\
-autostart=true\n\
-autorestart=true\n\
-stdout_logfile=/dev/stdout\n\
-stdout_logfile_maxbytes=0\n\
-stderr_logfile=/dev/stderr\n\
-stderr_logfile_maxbytes=0\n\
+# [program:celery]\n\
+# command=celery -A gavel.celery worker --loglevel=info --concurrency=1\n\
+# directory=/app\n\
+# autostart=true\n\
+# autorestart=true\n\
+# stdout_logfile=/dev/stdout\n\
+# stdout_logfile_maxbytes=0\n\
+# stderr_logfile=/dev/stderr\n\
+# stderr_logfile_maxbytes=0\n\
 \n\
-[program:celery-beat]\n\
-command=celery -A gavel.celery beat --loglevel=info\n\
-directory=/app\n\
-autostart=true\n\
-autorestart=true\n\
-stdout_logfile=/dev/stdout\n\
-stdout_logfile_maxbytes=0\n\
-stderr_logfile=/dev/stderr\n\
-stderr_logfile_maxbytes=0\n\
+# [program:celery-beat]\n\
+# command=celery -A gavel.celery beat --loglevel=info\n\
+# directory=/app\n\
+# autostart=true\n\
+# autorestart=true\n\
+# stdout_logfile=/dev/stdout\n\
+# stdout_logfile_maxbytes=0\n\
+# stderr_logfile=/dev/stderr\n\
+# stderr_logfile_maxbytes=0\n\
 \n\
 [program:gavel]\n\
 command=gunicorn -b 0.0.0.0:5000 -w 2 --timeout 120 gavel:app\n\
@@ -130,9 +130,9 @@ EXPOSE 5000
 # Volume for PostgreSQL data persistence
 VOLUME ["/var/lib/postgresql/data"]
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:5000/ || exit 1
+# Health check - use lightweight /health endpoint with start_period for initialization
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
 
 # Start script
 CMD ["/app/start.sh"]
