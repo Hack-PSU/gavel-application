@@ -7,8 +7,8 @@ echo "Using PostgreSQL binaries from: $PG_BIN"
 
 # Initialize PostgreSQL if needed
 if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
-  echo "Initializing PostgreSQL database..."
-  su - postgres -c "$PG_BIN/initdb -D /var/lib/postgresql/data"
+  echo "Initializing PostgreSQL database with UTF-8 encoding..."
+  su - postgres -c "$PG_BIN/initdb -D /var/lib/postgresql/data --encoding=UTF8 --locale=C.UTF-8"
   echo "PostgreSQL initialized"
 fi
 
@@ -35,8 +35,8 @@ if ! su - postgres -c "psql -d postgres -tAc \"SELECT 1 FROM pg_roles WHERE roln
 fi
 
 if ! su - postgres -c "psql -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='gavel'\"" | grep -q 1; then
-  echo "Creating gavel database..."
-  su - postgres -c "psql -d postgres -c \"CREATE DATABASE gavel OWNER gavel;\""
+  echo "Creating gavel database with UTF-8 encoding..."
+  su - postgres -c "psql -d postgres -c \"CREATE DATABASE gavel OWNER gavel ENCODING 'UTF8' LC_COLLATE='C.UTF-8' LC_CTYPE='C.UTF-8' TEMPLATE=template0;\""
 fi
 
 # Redis disabled for testing

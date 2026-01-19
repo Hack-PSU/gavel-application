@@ -404,9 +404,15 @@ def sync_applicants(hackathon_id, auth_token):
             logger.error(f"[ERROR] Failed to process registration {reg.get('id')}: {e}")
             import traceback
             logger.error(traceback.format_exc())
+            # Rollback the session to recover from failed transaction
+            db.session.rollback()
             error_count += 1
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to commit sync changes: {e}")
+        db.session.rollback()
 
     # Update hackathon sync timestamp
     hackathon = Hackathon.by_id(hackathon_id)
