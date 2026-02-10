@@ -16,13 +16,17 @@
     <p><strong>Last Synced:</strong> {{ hackathon.last_synced | utcdatetime_local if hackathon and hackathon.last_synced else 'Never' }}</p>
     <p><strong>Total Applicants:</strong> {{ applicants | length }}</p>
 
-    <div style="display: flex; gap: 10px; margin-top: 15px;">
+    <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
       <form action="{{ url_for('sync') }}" method="post">
         <input type="submit" name="action" value="sync_hackathon" class="positive">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
       </form>
       <form action="{{ url_for('sync') }}" method="post">
         <input type="submit" name="action" value="sync_applicants" class="positive">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      </form>
+      <form action="{{ url_for('sync') }}" method="post">
+        <input type="submit" name="action" value="push_applicants" class="positive">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
       </form>
     </div>

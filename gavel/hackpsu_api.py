@@ -84,6 +84,41 @@ class HackPSUAPI:
             logger.error(f"API request error: {type(e).__name__}: {e}")
             raise HackPSUAPIError(f"API request failed: {str(e)}")
 
+    def _post(self, endpoint, data=None, auth_token=None):
+        """Make POST request to HackPSU API."""
+        url = f"{self.base_url}{endpoint}"
+        headers = self._get_auth_header(auth_token)
+        headers['Content-Type'] = 'application/json'
+
+        logger.debug(f"API POST request: {url}")
+        logger.debug(f"API request has auth token: {bool(auth_token)}")
+        if auth_token:
+            logger.debug(f"Auth token length: {len(auth_token)}, starts with: {auth_token[:50]}...")
+        if data:
+            logger.debug(f"API request payload keys: {list(data.keys()) if isinstance(data, dict) else 'list'}")
+
+        try:
+            response = requests.post(url, json=data, headers=headers, timeout=30)
+            logger.debug(f"API response status: {response.status_code}")
+            logger.debug(f"API response headers: {dict(response.headers)}")
+
+            if response.status_code not in [200, 201, 202, 204]:
+                logger.error(f"API error response body: {response.text[:500]}")
+
+            response.raise_for_status()
+            if response.text:
+                json_data = response.json()
+                logger.debug(f"API response data keys: {list(json_data.keys()) if isinstance(json_data, dict) else 'list'}")
+                return json_data
+            return {}
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"API HTTP error: {e}")
+            logger.error(f"Response body: {e.response.text[:500] if e.response else 'No response'}")
+            raise HackPSUAPIError(f"API request failed: {str(e)}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"API request error: {type(e).__name__}: {e}")
+            raise HackPSUAPIError(f"API request failed: {str(e)}")
+
     def get_hackathons(self, auth_token, active=None):
         """GET /hackathons - Get hackathons, optionally filtered by active status."""
         params = {}
@@ -221,6 +256,26 @@ class HackPSUAPI:
         except HackPSUAPIError as e:
             logger.error(f"export_users failed: {e}")
             return []
+
+    def push_applicants(self, applicants_data, auth_token):
+        """POST /applicants/bulk - Push applicants to HackPSU API.
+        
+        Args:
+            applicants_data: List of applicant dictionaries with all fields
+            auth_token: Firebase session token for API authentication
+            
+        Returns:
+            Response from API or None if failed
+        """
+        try:
+            payload = {'applicants': applicants_data}
+            logger.info(f"Pushing {len(applicants_data)} applicants to HackPSU API...")
+            response = self._post('/applicants/bulk', data=payload, auth_token=auth_token)
+            logger.info(f"Push applicants response: {response}")
+            return response
+        except HackPSUAPIError as e:
+            logger.error(f"push_applicants failed: {e}")
+            return None
 
 
 def sync_hackathon(auth_token):
@@ -421,6 +476,79 @@ def sync_applicants(hackathon_id, auth_token):
         db.session.commit()
 
     return synced_count, error_count
+
+
+def push_applicants(hackathon_id, auth_token):
+    """Push all applicants from Gavel to HackPSU API, overwriting their data.
+
+    Args:
+        hackathon_id: ID of the hackathon to push applicants for
+        auth_token: Firebase session token for API authentication
+
+    Returns:
+        tuple: (pushed_count, error_count)
+    """
+    api = HackPSUAPI()
+
+    # Fetch all active applicants from the database
+    logger.info(f"Fetching applicants for hackathon {hackathon_id}...")
+    applicants = Applicant.query.filter_by(hackathon_id=hackathon_id, active=True).all()
+    logger.info(f"Found {len(applicants)} applicants to push")
+
+    if not applicants:
+        logger.warning("No active applicants to push")
+        return 0, 0
+
+    applicants_data = []
+    pushed_count = 0
+    error_count = 0
+
+    # Convert each applicant to API format (camelCase)
+    for applicant in applicants:
+        try:
+            applicant_dict = {
+                # Required fields
+                'userId': applicant.hackpsu_user_id,
+                
+                # Registration/hackathon fields
+                'hackathonId': applicant.hackathon_id,
+                
+                # Ranking/scoring fields from Gavel
+                'mu': applicant.mu,
+                'sigmaSquared': applicant.sigma_sq,
+                'prioritized': applicant.prioritized,
+            }
+            
+            # Remove None values to keep payload clean
+            applicant_dict = {k: v for k, v in applicant_dict.items() if v is not None}
+            applicants_data.append(applicant_dict)
+            pushed_count += 1
+
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to serialize applicant {applicant.id}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            error_count += 1
+
+    # Push all applicants to HackPSU API
+    if applicants_data:
+        try:
+            logger.info(f"Pushing {len(applicants_data)} applicants to HackPSU API...")
+            response = api.push_applicants(applicants_data, auth_token)
+            if response:
+                logger.info(f"Successfully pushed applicants to HackPSU API")
+            else:
+                logger.error("Failed to push applicants to HackPSU API")
+                error_count += len(applicants_data)
+                pushed_count = 0
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to push applicants: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            error_count += len(applicants_data)
+            pushed_count = 0
+
+    return pushed_count, error_count
 
 
 @celery.task

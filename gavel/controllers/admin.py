@@ -5,7 +5,7 @@ import gavel.settings as settings
 import gavel.utils as utils
 import gavel.stats as stats
 from gavel.firebase_auth import hackpsu_admin_required, get_session_token, get_id_token_for_api
-from gavel.hackpsu_api import sync_hackathon, sync_applicants
+from gavel.hackpsu_api import sync_hackathon, sync_applicants, push_applicants
 from flask import (
     redirect,
     render_template,
@@ -101,6 +101,17 @@ def sync():
         synced, errors = sync_applicants(hackathon.id, auth_token)
         if errors > 0:
             return utils.server_error(f'Sync completed with errors. Synced: {synced}, Errors: {errors}')
+        return redirect(url_for('admin'))
+
+    elif action == 'push_applicants':
+        hackathon = Hackathon.get_active()
+        if not hackathon:
+            return utils.user_error('No active hackathon. Please sync hackathon first.')
+        pushed, errors = push_applicants(hackathon.id, auth_token)
+        if errors > 0:
+            return utils.server_error(f'Push completed with errors. Pushed: {pushed}, Errors: {errors}')
+        if pushed == 0:
+            return utils.user_error('No active applicants to push.')
         return redirect(url_for('admin'))
 
     return redirect(url_for('admin'))
