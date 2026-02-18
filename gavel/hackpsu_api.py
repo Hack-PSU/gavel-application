@@ -268,8 +268,8 @@ class HackPSUAPI:
             Response from API or None if failed
         """
         try:
-            payload = {'applicants': applicants_data}
-            logger.info(f"Pushing {len(applicants_data)} applicants to HackPSU API...")
+            payload = {'scores': applicants_data}
+            logger.info(f"Pushing {len(applicants_data)} applicants to HackPSU APIV3...")
             response = self._post('/applicants/bulk', data=payload, auth_token=auth_token)
             logger.info(f"Push applicants response: {response}")
             return response
