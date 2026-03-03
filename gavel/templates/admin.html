@@ -116,6 +116,7 @@
           <th data-sort-method="caseInsensitiveSort">Description</th>
           <th data-sort-method="number">Privilege</th>
           <th data-sort-method="number">Votes</th>
+          <th data-sort-method="number">Projects Seen</th>
           <th data-sort-method="number">Next (Id)</th>
           <th data-sort-method="number">Previous (Id)</th>
           <th data-sort-method="number" data-sort-order="desc">Updated</th>
@@ -132,6 +133,7 @@
           <td>{{ annotator.description }}</td>
           <td>{{ annotator.privilege_level }}</td>
           <td>{{ counts.get(annotator.id, 0) }}</td>
+          <td>{{ projects_seen.get(annotator.id, 0) }}</td>
           <td data-sort="{{ annotator.next_id or -1 }}">{{ annotator.next_id }}</td>
           <td data-sort="{{ annotator.prev_id or -1 }}">{{ annotator.prev_id }}</td>
           <td data-sort="{{ annotator.updated | utcdatetime_epoch }}">{{ annotator.updated | utcdatetime_local }}</td>

@@ -31,6 +31,7 @@ def admin():
     # Count votes per annotator and applicant
     counts = {}
     applicant_counts = {}
+    projects_seen = {}
     for d in decisions:
         a = d.annotator_id
         w = d.winner_id
@@ -38,6 +39,10 @@ def admin():
         counts[a] = counts.get(a, 0) + 1
         applicant_counts[w] = applicant_counts.get(w, 0) + 1
         applicant_counts[l] = applicant_counts.get(l, 0) + 1
+        if a not in projects_seen:
+            projects_seen[a] = set()
+        projects_seen[a].add(w)
+        projects_seen[a].add(l)
 
     # Calculate viewed and skipped counts
     viewed = {a.id: {ann.id for ann in a.viewed} for a in applicants}
@@ -54,6 +59,7 @@ def admin():
         'admin.html',
         annotators=annotators,
         counts=counts,
+        projects_seen={k: len(v) for k, v in projects_seen.items()},
         applicant_counts=applicant_counts,
         item_counts=applicant_counts,  # Backwards compatibility
         skipped=skipped,
