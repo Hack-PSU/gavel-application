@@ -164,6 +164,11 @@ hr {
   padding-right: 1rem;
 }
 
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .api-link {
   text-align: center;
   margin-top: 1rem;
