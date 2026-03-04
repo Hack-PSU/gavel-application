@@ -27,7 +27,7 @@ if not logger.handlers:
 AUTH_LOGIN_URL = os.environ.get('AUTH_LOGIN_URL', 'http://localhost:3000/login')
 AUTH_ENVIRONMENT = os.environ.get('AUTH_ENVIRONMENT', 'production')
 MIN_JUDGE_ROLE = int(os.environ.get('MIN_JUDGE_ROLE', '2'))  # Only users with role >= 2 can judge
-MIN_ADMIN_ROLE = int(os.environ.get('MIN_ADMIN_ROLE', '4'))  # Only users with role >= 4 can access admin
+MIN_ADMIN_ROLE = int(os.environ.get('MIN_ADMIN_ROLE', '3'))  # Only users with role >= 4 can access admin
 
 # Firebase configuration
 FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', 'hackpsu-408118')

@@ -13,7 +13,7 @@ services:
       - AUTH_LOGIN_URL=${AUTH_LOGIN_URL:-http://localhost:3000/login}
       - AUTH_ENVIRONMENT=${AUTH_ENVIRONMENT:-production}
       - MIN_JUDGE_ROLE=${MIN_JUDGE_ROLE:-2}
-      - MIN_ADMIN_ROLE=${MIN_ADMIN_ROLE:-4}
+      - MIN_ADMIN_ROLE=${MIN_ADMIN_ROLE:-3}
       - HACKPSU_API_KEY=${HACKPSU_API_KEY:-}
       - HACKPSU_API_BASE_URL=${HACKPSU_API_BASE_URL:-https://apiv3.hackpsu.org}
       - HACKPSU_SERVICE_TOKEN=${HACKPSU_SERVICE_TOKEN:-}

@@ -43,7 +43,7 @@ ENV PYTHONUNBUFFERED=1 \
     # HackPSU Auth
     AUTH_ENVIRONMENT=production \
     MIN_JUDGE_ROLE=2 \
-    MIN_ADMIN_ROLE=4 \
+    MIN_ADMIN_ROLE=3 \
     AUTH_LOGIN_URL=https://auth.hackpsu.org/login \
     # HackPSU API
     HACKPSU_API_BASE_URL=https://apiv3.hackpsu.org \

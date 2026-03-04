@@ -97,7 +97,7 @@ SENDGRID_API_KEY =     c.get('sendgrid_api_key', 'SENDGRID_API_KEY',         def
 AUTH_LOGIN_URL =       c.get('auth_login_url',   'AUTH_LOGIN_URL',           default='http://localhost:3000/login')
 AUTH_ENVIRONMENT =     c.get('auth_environment', 'AUTH_ENVIRONMENT',         default='production')
 MIN_JUDGE_ROLE =   int(c.get('min_judge_role',   'MIN_JUDGE_ROLE',           default=2))
-MIN_ADMIN_ROLE =   int(c.get('min_admin_role',   'MIN_ADMIN_ROLE',           default=4))
+MIN_ADMIN_ROLE =   int(c.get('min_admin_role',   'MIN_ADMIN_ROLE',           default=3))
 
 # HackPSU API Settings
 HACKPSU_API_BASE_URL = c.get('hackpsu_api_base_url', 'HACKPSU_API_BASE_URL', default='https://apiv3.hackpsu.org')
